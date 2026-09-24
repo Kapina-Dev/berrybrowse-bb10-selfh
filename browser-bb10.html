@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BerryBrowse</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000; color: #fff;
+      font-family: sans-serif; overflow: hidden;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      display: -webkit-box; display: flex;
+      -webkit-box-align: center; align-items: center;
+      gap: 5px; padding: 5px 6px;
+      background: #111; border-bottom: 1px solid #333; width: 100%;
+    }
+    #url {
+      -webkit-box-flex: 1; flex: 1;
+      padding: 7px 8px; font-size: 13px;
+      background: #222; color: #fff;
+      border: 1px solid #444; border-radius: 6px;
+      outline: none; min-width: 0;
+    }
+    #url:focus { border-color: #cc0000; }
+    button {
+      padding: 7px 10px; font-size: 15px;
+      background: #222; color: #fff;
+      border: 1px solid #444; border-radius: 6px;
+      cursor: pointer; -webkit-flex-shrink: 0; flex-shrink: 0; white-space: nowrap;
+    }
+    button:active { background: #cc0000; border-color: #cc0000; }
+    #btn-go { background: #cc0000; border-color: #cc0000; font-weight: bold; }
+    #btn-quality        { font-size: 12px; padding: 7px 8px; color: #aaa; }
+    #btn-quality.low    { color: #ff9800; border-color: #ff9800; }
+    #btn-quality.medium { color: #4caf50; border-color: #4caf50; }
+    #btn-quality.high   { color: #2196f3; border-color: #2196f3; }
+    #btn-quality.max    { color: #cc0000; border-color: #cc0000; font-weight: bold; }
+    #btn-refresh.conn-good { color: #4caf50; border-color: #4caf50; }
+    #btn-refresh.conn-ok   { color: #ff9800; border-color: #ff9800; }
+    #btn-refresh.conn-bad  { color: #f44336; border-color: #f44336; }
+    #btn-refresh:active    { background: #cc0000; border-color: #cc0000; color: #fff; }
+    #btn-tab         { font-size: 11px; padding: 4px 8px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 4px; }
+    #btn-tab.on-tab2 { background: rgba(255,255,255,0.35); border-color: #fff; font-weight: bold; }
+    #btn-tab.opening { background: rgba(255,165,0,0.3); border-color: #ff9800; color: #ff9800; }
+
+    /* ── Loading bar ── */
+    #loading-bar { width: 100%; height: 2px; background: transparent; overflow: hidden; position: relative; }
+    #loading-bar.active { background: #1a1a1a; }
+    #loading-bar-inner {
+      position: absolute; top: 0; left: -40%; width: 40%; height: 100%;
+      background: #cc0000; opacity: 0;
+    }
+    #loading-bar.active #loading-bar-inner {
+      opacity: 1;
+      -webkit-animation: loadSlide 1.2s ease-in-out infinite;
+      animation: loadSlide 1.2s ease-in-out infinite;
+    }
+    @-webkit-keyframes loadSlide { 0% { left: -40%; } 100% { left: 100%; } }
+    @keyframes loadSlide         { 0% { left: -40%; } 100% { left: 100%; } }
+
+    /* ── Screen ── */
+    #screen-wrap {
+      width: 100%;
+      height: -webkit-calc(100% - 46px); height: calc(100% - 46px);
+      overflow: hidden; background: #000; position: relative;
+    }
+    #screen { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; -webkit-object-fit: fill; -o-object-fit: fill; object-fit: fill; }
+
+    /* ── Toast ── */
+    #toast {
+      display: none; position: fixed; bottom: 60px; left: 10%; width: 80%;
+      padding: 10px 14px; background: #222; color: #ff9800;
+      font-size: 12px; text-align: center; border-radius: 8px;
+      border: 1px solid #444; z-index: 400;
+    }
+    #toast.show { display: block; }
+
+    /* ── Menu overlay ── */
+    #menu-overlay {
+      display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+      background: rgba(0,0,0,0.7); z-index: 500;
+      -webkit-box-align: start; align-items: flex-start;
+      -webkit-box-pack: end; justify-content: flex-end;
+    }
+    #menu-overlay.open { display: -webkit-box; display: flex; }
+    #menu-panel {
+      width: 80%; max-width: 320px; height: 100%;
+      background: #111; border-left: 1px solid #333; overflow-y: auto;
+    }
+    #menu-header {
+      display: -webkit-box; display: flex;
+      -webkit-box-align: center; align-items: center;
+      -webkit-box-pack: justify; justify-content: space-between;
+      padding: 14px 16px; background: #cc0000;
+    }
+    #menu-title { font-size: 16px; font-weight: bold; color: #fff; letter-spacing: 1px; }
+    #menu-close { background: none; border: none; color: #fff; font-size: 18px; padding: 4px 8px; cursor: pointer; }
+    #menu-close:active { opacity: 0.6; }
+    .zoom-controls { display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center; gap: 4px; }
+    .zoom-btn {
+      background: rgba(255,255,255,0.15); border: none; color: #fff;
+      font-size: 16px; font-weight: bold; width: 28px; height: 28px;
+      border-radius: 4px; cursor: pointer; padding: 0; line-height: 28px; text-align: center;
+    }
+    .zoom-btn:active { background: rgba(255,255,255,0.3); }
+    #zoom-level { font-size: 11px; color: rgba(255,255,255,0.8); min-width: 32px; text-align: center; }
+
+    /* ── Tab bar ── */
+    #menu-tabs {
+      display: -webkit-box; display: flex;
+      width: 100%; border-bottom: 1px solid #333; background: #0a0a0a;
+    }
+    .menu-tab {
+      -webkit-box-flex: 1; flex: 1;
+      padding: 10px 0; text-align: center; font-size: 11px; color: #666;
+      background: none; border: none; border-bottom: 2px solid transparent;
+      border-radius: 0; cursor: pointer; letter-spacing: 1px;
+    }
+    .menu-tab:active { opacity: 0.7; background: none; }
+    .menu-tab.active { color: #cc0000; border-bottom-color: #cc0000; }
+    .menu-content { display: none; }
+    .menu-content.active { display: block; }
+    .menu-section { padding: 14px 16px; border-bottom: 1px solid #222; }
+    .menu-label { font-size: 10px; color: #555; letter-spacing: 2px; margin-bottom: 10px; }
+    .menu-row {
+      display: -webkit-box; display: flex;
+      -webkit-box-pack: justify; justify-content: space-between;
+      -webkit-box-align: center; align-items: center; padding: 6px 0;
+    }
+    .menu-key { font-size: 13px; color: #888; }
+    .menu-val { font-size: 13px; color: #eee; }
+    .menu-row-tap { cursor: pointer; }
+    .menu-row-tap:active { opacity: 0.6; }
+    .menu-val-toggle { font-size: 13px; color: #4caf50; }
+
+    /* ── List items ── */
+    .menu-list-item {
+      display: -webkit-box; display: flex;
+      -webkit-box-pack: justify; justify-content: space-between;
+      -webkit-box-align: center; align-items: center;
+      padding: 10px 16px; border-bottom: 1px solid #1a1a1a; cursor: pointer;
+    }
+    .menu-list-item:active { background: #1a1a1a; }
+    .mli-info { overflow: hidden; -webkit-box-flex: 1; flex: 1; min-width: 0; }
+    .mli-title  { font-size: 12px; color: #ddd; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .mli-domain { font-size: 10px; color: #555; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-top: 2px; }
+    .mli-meta   { font-size: 10px; color: #555; -webkit-flex-shrink: 0; flex-shrink: 0; margin-left: 8px; }
+    .mli-delete { font-size: 14px; color: #555; background: none; border: none; padding: 4px 8px; cursor: pointer; -webkit-flex-shrink: 0; flex-shrink: 0; margin-left: 4px; }
+    .mli-delete:active { color: #f44336; }
+    .menu-list-empty { font-size: 11px; color: #444; padding: 16px; text-align: center; }
+    .menu-list-header {
+      display: -webkit-box; display: flex;
+      -webkit-box-pack: justify; justify-content: space-between;
+      -webkit-box-align: center; align-items: center;
+      padding: 12px 16px 8px 16px;
+    }
+    .menu-list-header .menu-label { margin-bottom: 0; }
+    .menu-list-action { font-size: 10px; color: #cc0000; cursor: pointer; letter-spacing: 1px; background: none; border: none; padding: 0; }
+    .menu-list-action:active { opacity: 0.6; }
+
+    /* ── Download banner ── */
+    #download-banner {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      background: #0d1a00; border-top: 1px solid #2a4400;
+      padding: 10px 14px; z-index: 350;
+      -webkit-box-align: center; align-items: center; gap: 10px;
+    }
+    #download-banner.show { display: -webkit-box; display: flex; }
+    #download-banner-info { -webkit-box-flex: 1; flex: 1; min-width: 0; }
+    #download-banner-name { font-size: 12px; font-weight: bold; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    #download-banner-size { font-size: 11px; color: #668833; margin-top: 2px; }
+    #download-save-btn    { background: #336600; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: bold; -webkit-flex-shrink: 0; flex-shrink: 0; }
+    #download-save-btn:active { opacity: 0.7; }
+    #download-dismiss-btn { background: none; border: none; color: #555; font-size: 16px; padding: 4px 8px; -webkit-flex-shrink: 0; flex-shrink: 0; }
+    #download-dismiss-btn:active { color: #aaa; }
+
+    /* ── File chooser overlay ── */
+    #filechooser-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.88); z-index: 710;
+      -webkit-box-align: center; align-items: center;
+      -webkit-box-pack: center; justify-content: center;
+    }
+    #filechooser-overlay.show { display: -webkit-box; display: flex; }
+    #filechooser-box {
+      text-align: center; padding: 32px 24px; max-width: 300px; width: 100%;
+      background: #111; border: 1px solid #333; border-radius: 12px;
+    }
+    #filechooser-box h2 { font-size: 16px; color: #fff; margin-bottom: 8px; letter-spacing: 1px; }
+    #filechooser-box p  { font-size: 12px; color: #555; margin-bottom: 20px; }
+    #upload-input { position: absolute; opacity: 0; width: 1px; height: 1px; overflow: hidden; }
+    .upload-choose-btn {
+      display: block; width: 100%; padding: 13px;
+      background: #222; color: #ccc; border: 1px solid #444;
+      border-radius: 8px; font-size: 13px; font-weight: bold;
+      cursor: pointer; margin-bottom: 16px;
+    }
+    .upload-choose-btn:active { background: #333; }
+    #upload-progress-wrap { margin-bottom: 16px; display: none; }
+    #upload-progress-label { font-size: 11px; color: #888; margin-bottom: 6px; }
+    #upload-progress-track { height: 4px; background: #222; border-radius: 2px; overflow: hidden; }
+    #upload-progress-bar   { height: 100%; width: 0%; background: #cc0000; border-radius: 2px; -webkit-transition: width 0.1s; transition: width 0.1s; }
+    #upload-cancel-btn { width: 100%; padding: 11px; background: #1a1a1a; color: #666; border: 1px solid #2a2a2a; border-radius: 8px; font-size: 12px; cursor: pointer; }
+    #upload-cancel-btn:active { opacity: 0.7; }
+
+    /* ── Drag mode indicator ── */
+    #drag-indicator {
+      display: none; position: fixed; top: 50px; left: 50%;
+      -webkit-transform: translateX(-50%); transform: translateX(-50%);
+      background: rgba(204,0,0,0.92); color: #fff;
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      padding: 6px 16px; border-radius: 4px; z-index: 450;
+      pointer-events: none;
+    }
+    #drag-indicator.show { display: block; }
+
+    #kbd-capture {
+      position: fixed; top: -300px; left: 0; width: 2px; height: 2px;
+      opacity: 0; border: none; background: transparent; color: transparent;
+      font-size: 1px; outline: none; z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <button id="btn-back">&#8592;</button>
+  <button id="btn-forward">&#8594;</button>
+  <button id="btn-refresh">&#8635;</button>
+  <input id="url" type="url" placeholder="Search or enter URL"
+         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <button id="btn-go">GO</button>
+  <button id="btn-menu">&#9776;</button>
+  <button id="btn-quality" class="max">MAX</button>
+</div>
+
+<div id="loading-bar"><div id="loading-bar-inner"></div></div>
+
+<div id="screen-wrap">
+  <img id="screen" />
+</div>
+
+<div id="toast"></div>
+
+<!-- ── Menu overlay ── -->
+<div id="menu-overlay">
+  <div id="menu-panel">
+    <div id="menu-header">
+      <span id="menu-title">BerryBrowse</span>
+      <button id="btn-tab">[1]</button>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoom-out">&#8722;</button>
+        <span id="zoom-level">100%</span>
+        <button class="zoom-btn" id="zoom-in">&#43;</button>
+      </div>
+      <button id="menu-close">&#10005;</button>
+    </div>
+
+    <div id="menu-tabs">
+      <button class="menu-tab active" id="tab-settings">Settings</button>
+      <button class="menu-tab"        id="tab-bookmarks">Bookmarks</button>
+      <button class="menu-tab"        id="tab-history">History</button>
+    </div>
+
+    <!-- Settings panel -->
+    <div class="menu-content active" id="panel-settings">
+      <div class="menu-section">
+        <div class="menu-label">CONNECTION</div>
+        <div class="menu-row menu-row-tap" id="row-mode">
+          <span class="menu-key">Mode</span>
+          <span class="menu-val-toggle" id="m-mode">Mobile</span>
+        </div>
+        <div class="menu-row menu-row-tap" id="row-quality">
+          <span class="menu-key">Quality</span>
+          <span class="menu-val-toggle" id="m-quality">MAX</span>
+        </div>
+        <div class="menu-row">
+          <span class="menu-key">Latency</span>
+          <span class="menu-val" id="m-latency">&mdash;</span>
+        </div>
+        <div class="menu-row menu-row-tap" id="row-audio" style="display:none">
+          <span class="menu-key">Audio</span>
+          <span class="menu-val-toggle" id="m-audio">Off</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bookmarks panel -->
+    <div class="menu-content" id="panel-bookmarks">
+      <div class="menu-section">
+        <button class="menu-btn" id="bk-add"
+          style="width:100%;padding:12px;border-radius:8px;font-size:13px;cursor:pointer;margin-bottom:8px;border:none;font-weight:bold;background:#222;color:#ff9800;border:1px solid #333;">
+          &#9733; Bookmark this page
+        </button>
+      </div>
+      <div class="menu-list-header">
+        <span class="menu-label">SAVED</span>
+        <button class="menu-list-action" id="bk-clear">CLEAR ALL</button>
+      </div>
+      <div id="bk-list"><div class="menu-list-empty">No bookmarks yet</div></div>
+    </div>
+
+    <!-- History panel -->
+    <div class="menu-content" id="panel-history">
+      <div class="menu-list-header">
+        <span class="menu-label">THIS SESSION</span>
+        <button class="menu-list-action" id="hist-clear">CLEAR</button>
+      </div>
+      <div id="hist-list"><div class="menu-list-empty">No history yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Download banner ── -->
+<div id="download-banner">
+  <div id="download-banner-info">
+    <div id="download-banner-name"></div>
+    <div id="download-banner-size"></div>
+  </div>
+  <button id="download-save-btn">SAVE</button>
+  <button id="download-dismiss-btn">&#10005;</button>
+</div>
+
+<!-- ── File chooser overlay ── -->
+<div id="filechooser-overlay">
+  <div id="filechooser-box">
+    <h2>SELECT FILE</h2>
+    <p>Choose a file from your device to upload</p>
+    <label for="upload-input" class="upload-choose-btn">CHOOSE FILE</label>
+    <input type="file" id="upload-input">
+    <div id="upload-progress-wrap">
+      <div id="upload-progress-label">Uploading...</div>
+      <div id="upload-progress-track"><div id="upload-progress-bar"></div></div>
+    </div>
+    <button id="upload-cancel-btn">CANCEL</button>
+  </div>
+</div>
+
+<audio id="audio-el" preload="none"></audio>
+
+<input id="kbd-capture" type="text"
+       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+<div id="drag-indicator">DRAG MODE &mdash; swipe to drag</div>
+
+<script>
+(function() {
+
+  var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  var ws       = new WebSocket(protocol + '//' + location.host);
+  var img      = document.getElementById('screen');
+  var urlInput = document.getElementById('url');
+  var kbdCapture = document.getElementById('kbd-capture');
+  var btnQuality = document.getElementById('btn-quality');
+  var btnRefresh = document.getElementById('btn-refresh');
+  var loadingBar = document.getElementById('loading-bar');
+
+  var REMOTE_W = 800;
+  var REMOTE_H = 720;
+
+  var desktopMode  = false;
+  var zoomLevel    = 100;
+  var audioEnabled = false;
+  var audioPlaying = false;
+  var currentUrl   = '';
+  var currentTitle = '';
+
+  // ── Tab state ────────────────────────────────────────────────────────────────
+  var activeTab = 0;
+  var btnTab    = document.getElementById('btn-tab');
+
+  function updateTabButton() {
+    if (activeTab === 1) {
+      btnTab.className = 'on-tab2';
+      btnTab.textContent = '[2]';
+    } else {
+      btnTab.className = '';
+      btnTab.textContent = '[1]';
+    }
+  }
+
+  btnTab.addEventListener('click', function() {
+    send({ type: 'switchTab' });
+    captureKbd();
+  });
+
+  var audioEl = document.getElementById('audio-el');
+
+  function setAudioPlaying(on) {
+    audioPlaying = on;
+    document.getElementById('m-audio').textContent = on ? 'On' : 'Off';
+    document.getElementById('m-audio').style.color = on ? '#4caf50' : '';
+  }
+
+  document.getElementById('row-audio').addEventListener('click', function() {
+    if (!audioEnabled) return;
+    if (audioPlaying) {
+      audioEl.pause();
+      audioEl.src = '';
+      setAudioPlaying(false);
+    } else {
+      audioDidRetry = false;
+      audioEl.src = '/api/audio/stream';
+      audioEl.play();
+      setAudioPlaying(true);
+    }
+    captureKbd();
+  });
+
+  var audioDidRetry = false;
+  audioEl.onerror = function() {
+    setAudioPlaying(false);
+    if (!audioDidRetry) {
+      audioDidRetry = true;
+      setTimeout(function() {
+        audioEl.src = '/api/audio/stream';
+        audioEl.play();
+        setAudioPlaying(true);
+      }, 2000);
+    }
+  };
+  audioEl.onended = function() { setAudioPlaying(false); };
+
+  // ── Quality ──────────────────────────────────────────────────────────────────
+
+  var presets      = ['low', 'medium', 'high', 'max'];
+  var presetLabels = { low: 'LOW', medium: 'MED', high: 'HI', max: 'MAX' };
+  var presetIndex  = 3; // start at max
+  var currentPresetName = 'max';
+
+  btnQuality.className = 'max';
+  btnQuality.innerHTML = 'MAX';
+
+  btnQuality.addEventListener('click', function() {
+    presetIndex = (presetIndex + 1) % presets.length;
+    currentPresetName = presets[presetIndex];
+    btnQuality.className = currentPresetName;
+    btnQuality.innerHTML = presetLabels[currentPresetName];
+    document.getElementById('m-quality').textContent = presetLabels[currentPresetName];
+    send({ type: 'quality', preset: currentPresetName });
+    captureKbd();
+  });
+
+  // ── Ping / latency ───────────────────────────────────────────────────────────
+
+  var pingId = 0, pingSentTime = 0, latency = -1, pingTimer = null;
+
+  function startPing() {
+    pingTimer = setInterval(function() {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      pingId++; pingSentTime = Date.now();
+      send({ type: 'ping', id: pingId });
+    }, 4000);
+  }
+
+  function handlePong(id) {
+    if (id !== pingId) return;
+    latency = Date.now() - pingSentTime;
+    btnRefresh.className = latency < 150 ? 'conn-good' : latency < 400 ? 'conn-ok' : 'conn-bad';
+  }
+
+  // ── WebSocket ────────────────────────────────────────────────────────────────
+
+  function send(obj) {
+    if (ws.readyState === WebSocket.OPEN) try { ws.send(JSON.stringify(obj)); } catch(e) {}
+  }
+
+  var prevUrl = null;
+  ws.binaryType = 'blob';
+
+  ws.onopen = function() { startPing(); };
+
+  ws.onmessage = function(evt) {
+    if (evt.data instanceof Blob) {
+      var newUrl = URL.createObjectURL(evt.data);
+      img.onload = function() { if (prevUrl) URL.revokeObjectURL(prevUrl); prevUrl = newUrl; };
+      img.src = newUrl;
+      return;
+    }
+    var msg;
+    try { msg = JSON.parse(evt.data); } catch(e) { return; }
+
+    switch (msg.type) {
+
+      case 'init':
+        desktopMode = msg.desktopMode || false;
+        zoomLevel   = msg.zoomLevel   || 100;
+        document.getElementById('m-mode').textContent = desktopMode ? 'Desktop' : 'Mobile';
+        document.getElementById('zoom-level').textContent = zoomLevel + '%';
+        var pi = presets.indexOf(msg.preset || 'max');
+        if (pi >= 0) { presetIndex = pi; currentPresetName = presets[pi]; }
+        btnQuality.className = currentPresetName;
+        btnQuality.innerHTML = presetLabels[currentPresetName];
+        document.getElementById('m-quality').textContent = presetLabels[currentPresetName];
+        if (msg.audioEnabled) {
+          audioEnabled = true;
+          document.getElementById('row-audio').style.display = '';
+        }
+        break;
+
+      case 'nav':
+        if (msg.url) { urlInput.value = msg.url; currentUrl = msg.url; }
+        if (msg.title) currentTitle = msg.title;
+        break;
+
+      case 'quality':
+        currentPresetName = msg.preset;
+        presetIndex = presets.indexOf(msg.preset);
+        if (presetIndex < 0) presetIndex = 3;
+        btnQuality.className = currentPresetName;
+        btnQuality.innerHTML = presetLabels[currentPresetName] || currentPresetName.toUpperCase();
+        document.getElementById('m-quality').textContent = presetLabels[currentPresetName] || currentPresetName;
+        break;
+
+      case 'status':
+        if (msg.loading) { loadingBar.className = 'active'; }
+        else             { loadingBar.className = ''; }
+        break;
+
+      case 'zoom':
+        zoomLevel = msg.level;
+        document.getElementById('zoom-level').textContent = zoomLevel + '%';
+        break;
+
+      case 'desktopMode':
+        desktopMode = msg.enabled;
+        document.getElementById('m-mode').textContent = desktopMode ? 'Desktop' : 'Mobile';
+        break;
+
+      case 'download':
+        showDownloadBanner(msg.filename, msg.size, msg.token);
+        break;
+
+      case 'fileChooser':
+        showFileChooser();
+        break;
+
+      case 'toast':
+        showToast(msg.message, 3000);
+        break;
+
+      case 'history':
+        renderHistory(msg.entries);
+        break;
+
+      case 'tabState':
+        if (msg.opening) {
+          btnTab.className = 'opening';
+          btnTab.textContent = '[...]';
+        } else {
+          activeTab = msg.active || 0;
+          updateTabButton();
+        }
+        break;
+
+      case 'pong':
+        handlePong(msg.id);
+        break;
+    }
+  };
+
+  ws.onclose = function() {
+    if (pingTimer) clearInterval(pingTimer);
+    btnRefresh.className = 'conn-bad';
+    audioEl.pause(); audioEl.src = '';
+    setTimeout(function() { location.reload(); }, 3000);
+  };
+
+  // ── Toast ────────────────────────────────────────────────────────────────────
+
+  var toastTimer = null;
+  function showToast(msg, duration) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show';
+    if (toastTimer) clearTimeout(toastTimer);
+    if (duration > 0) {
+      toastTimer = setTimeout(function() { el.className = ''; }, duration);
+    }
+  }
+
+  // ── Navigation ───────────────────────────────────────────────────────────────
+
+  function navigateTo(url) {
+    send({ type: 'navigate', url: url });
+    captureKbd();
+  }
+
+  document.getElementById('btn-go').addEventListener('click', function() {
+    navigateTo(urlInput.value);
+  });
+
+  urlInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+      navigateTo(urlInput.value);
+      urlInput.blur();
+    }
+  });
+
+  document.getElementById('btn-back').addEventListener('click', function() {
+    send({ type: 'back' }); captureKbd();
+  });
+
+  document.getElementById('btn-forward').addEventListener('click', function() {
+    send({ type: 'forward' }); captureKbd();
+  });
+
+  document.getElementById('btn-refresh').addEventListener('click', function() {
+    send({ type: 'refresh' }); captureKbd();
+  });
+
+  // ── Touch / drag ─────────────────────────────────────────────────────────────
+
+  var wrap = document.getElementById('screen-wrap');
+  var touchStart = null, lastTouchY = 0, lastTouchX = 0, scrolling = false;
+  var SCROLL_THRESHOLD = 10;
+  var lastScrollSent = 0;
+  var SCROLL_THROTTLE_MS = 32;
+  var dragMode = false;
+  var longPressTimer = null;
+  var LONG_PRESS_MS = 500;
+  var dragIndicator = document.getElementById('drag-indicator');
+  var lastDragPos = null;
+
+  function enterDragMode() {
+    dragMode = true;
+    dragIndicator.className = 'show';
+    if (navigator.vibrate) navigator.vibrate(40);
+    var rect = wrap.getBoundingClientRect();
+    var c = mapCoords(lastTouchX, lastTouchY, rect);
+    lastDragPos = c;
+    send({ type: 'dragStart', x: c.x, y: c.y });
+  }
+
+  function exitDragMode() {
+    dragMode = false;
+    dragIndicator.className = '';
+    lastDragPos = null;
+  }
+
+  function addTouch(el, type, fn) {
+    try { el.addEventListener(type, fn, { passive: false, capture: false }); }
+    catch (ex) { el.addEventListener(type, fn, false); }
+  }
+
+  addTouch(wrap, 'touchstart', function(e) {
+    try { e.preventDefault(); } catch (ex) {}
+    var t = e.touches[0];
+    touchStart = { x: t.clientX, y: t.clientY, time: Date.now() };
+    lastTouchY = t.clientY; lastTouchX = t.clientX; scrolling = false;
+    if (longPressTimer) clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(function() {
+      longPressTimer = null;
+      if (!scrolling && touchStart) enterDragMode();
+    }, LONG_PRESS_MS);
+  });
+
+  addTouch(wrap, 'touchmove', function(e) {
+    try { e.preventDefault(); } catch (ex) {}
+    if (!touchStart) return;
+    var t = e.touches[0];
+    var dx = t.clientX - lastTouchX, dy = t.clientY - lastTouchY;
+    var dist = Math.sqrt(Math.pow(t.clientX - touchStart.x, 2) + Math.pow(t.clientY - touchStart.y, 2));
+    if (!scrolling && dist > SCROLL_THRESHOLD) {
+      scrolling = true;
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+    if (dragMode) {
+      var rect = wrap.getBoundingClientRect();
+      var c = mapCoords(t.clientX, t.clientY, rect);
+      lastDragPos = c;
+      send({ type: 'dragMove', x: c.x, y: c.y });
+    } else if (scrolling) {
+      var now = Date.now();
+      if (now - lastScrollSent >= SCROLL_THROTTLE_MS) {
+        lastScrollSent = now;
+        var rect = wrap.getBoundingClientRect();
+        var c = mapCoords(t.clientX, t.clientY, rect);
+        send({ type: 'scroll', x: c.x, y: c.y, dx: -dx * 3, dy: -dy * 3 });
+      }
+    }
+    lastTouchX = t.clientX; lastTouchY = t.clientY;
+  });
+
+  addTouch(wrap, 'touchend', function(e) {
+    try { e.preventDefault(); } catch (ex) {}
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (!touchStart) return;
+    var t = e.changedTouches[0];
+    var dt   = Date.now() - touchStart.time;
+    var dist = Math.sqrt(Math.pow(t.clientX - touchStart.x, 2) + Math.pow(t.clientY - touchStart.y, 2));
+    var rect = wrap.getBoundingClientRect();
+    if (dragMode) {
+      var c2 = mapCoords(t.clientX, t.clientY, rect);
+      send({ type: 'dragEnd', x: c2.x, y: c2.y });
+      exitDragMode();
+    } else if (!scrolling && dt < 400 && dist < 15) {
+      var c = mapCoords(touchStart.x, touchStart.y, rect);
+      send({ type: 'click', x: c.x, y: c.y });
+    }
+    touchStart = null; scrolling = false; captureKbd();
+  });
+
+  addTouch(wrap, 'touchcancel', function() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (dragMode && lastDragPos) send({ type: 'dragEnd', x: lastDragPos.x, y: lastDragPos.y });
+    touchStart = null; scrolling = false;
+    exitDragMode();
+  });
+
+  function mapCoords(cx, cy, rect) {
+    return {
+      x: Math.round(Math.max(0, Math.min(REMOTE_W, (cx - rect.left) / rect.width  * REMOTE_W))),
+      y: Math.round(Math.max(0, Math.min(REMOTE_H, (cy - rect.top)  / rect.height * REMOTE_H))),
+    };
+  }
+
+  // Mouse wheel (desktop testing / trackpad devices)
+  wrap.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    send({ type: 'scroll', x: REMOTE_W / 2, y: REMOTE_H / 2, dx: e.deltaX * 3, dy: e.deltaY * 3 });
+  }, { passive: false });
+
+  // ── Physical keyboard ────────────────────────────────────────────────────────
+
+  var focusRetries = 0, focusRetryTimer = null;
+  var inputBatch = '', inputBatchTimer = null;
+  var bsCount = 0, bsWordMode = false, bsResetTimer = null;
+
+  function tryFocus() {
+    if (document.activeElement === urlInput) return;
+    if (document.activeElement === kbdCapture) return;
+    try { kbdCapture.focus(); } catch (e) {}
+    if (document.activeElement !== kbdCapture && focusRetries < 5) {
+      focusRetries++;
+      focusRetryTimer = setTimeout(tryFocus, 80);
+    }
+  }
+
+  function captureKbd() {
+    if (document.activeElement === urlInput) return;
+    if (focusRetryTimer) clearTimeout(focusRetryTimer);
+    focusRetries = 0; tryFocus();
+  }
+
+  function clearCapture() { kbdCapture.value = ''; }
+
+  function flushInputBatch() {
+    inputBatchTimer = null;
+    if (inputBatch.length > 0) { send({ type: 'type', text: inputBatch }); inputBatch = ''; }
+  }
+
+  function resetBsCounter() { bsCount = 0; bsWordMode = false; bsResetTimer = null; }
+
+  // Re-capture focus whenever kbd-capture loses it (prevents native browser stealing keyboard)
+  kbdCapture.addEventListener('blur', function() {
+    setTimeout(function() { if (document.activeElement !== urlInput) captureKbd(); }, 80);
+  });
+  urlInput.addEventListener('blur', function() { setTimeout(captureKbd, 150); });
+  document.addEventListener('DOMContentLoaded', function() { setTimeout(captureKbd, 200); });
+  window.addEventListener('load', function() { setTimeout(captureKbd, 200); });
+
+  kbdCapture.addEventListener('keydown', function(e) {
+    if (document.activeElement === urlInput) return;
+    var k = e.key || '', kc = e.keyCode || 0;
+    if (k === 'Enter'     || kc === 13) { send({ type: 'key', key: 'Enter' });     clearCapture(); return; }
+    if (k === 'Escape'    || kc === 27) { send({ type: 'key', key: 'Escape' });    clearCapture(); return; }
+    if (k === 'Tab'       || kc === 9)  { e.preventDefault(); send({ type: 'key', key: 'Tab' }); clearCapture(); return; }
+    if (k === 'ArrowUp'   || kc === 38) { send({ type: 'key', key: 'ArrowUp' });   clearCapture(); return; }
+    if (k === 'ArrowDown' || kc === 40) { send({ type: 'key', key: 'ArrowDown' }); clearCapture(); return; }
+    if (k === 'ArrowLeft' || kc === 37) { send({ type: 'key', key: 'ArrowLeft' }); clearCapture(); return; }
+    if (k === 'ArrowRight'|| kc === 39) { send({ type: 'key', key: 'ArrowRight' });clearCapture(); return; }
+    if (k === 'Delete'    || kc === 46) { send({ type: 'key', key: 'Delete' });    clearCapture(); return; }
+    if (k === 'Home'      || kc === 36) { send({ type: 'key', key: 'Home' });      clearCapture(); return; }
+    if (k === 'End'       || kc === 35) { send({ type: 'key', key: 'End' });       clearCapture(); return; }
+    if (k === 'PageUp'    || kc === 33) { send({ type: 'key', key: 'PageUp' });    clearCapture(); return; }
+    if (k === 'PageDown'  || kc === 34) { send({ type: 'key', key: 'PageDown' });  clearCapture(); return; }
+    if (k === 'Backspace' || kc === 8)  { e.preventDefault(); return; }
+  });
+
+  // Use input event for printable chars — reads actual typed value so Alt+key BB10 combos work correctly
+  kbdCapture.addEventListener('input', function() {
+    var val = kbdCapture.value;
+    if (!val || val.length === 0) return;
+    var printable = val.replace(/[^\x20-\x7E]/g, '');
+    kbdCapture.value = '';
+    if (printable.length === 0) return;
+    inputBatch += printable;
+    if (inputBatchTimer) clearTimeout(inputBatchTimer);
+    inputBatchTimer = setTimeout(flushInputBatch, 30);
+  });
+
+  kbdCapture.addEventListener('keyup', function(e) {
+    var k = e.key || '', kc = e.keyCode || 0;
+    if (k !== 'Backspace' && kc !== 8) return;
+    if (bsResetTimer) { clearTimeout(bsResetTimer); bsResetTimer = null; }
+    bsCount++;
+    if (bsCount >= 5) bsWordMode = true;
+    if (bsWordMode) send({ type: 'key', key: 'Backspace', modifiers: ['ctrl'] });
+    else             send({ type: 'key', key: 'Backspace' });
+    clearCapture();
+    bsResetTimer = setTimeout(resetBsCounter, 400);
+  });
+
+  // ── Menu ─────────────────────────────────────────────────────────────────────
+
+  var menuOverlay = document.getElementById('menu-overlay');
+
+  document.getElementById('btn-menu').addEventListener('click', function() {
+    document.getElementById('m-latency').textContent = latency >= 0 ? latency + 'ms' : '\u2014';
+    menuOverlay.className = 'open';
+    send({ type: 'history' });
+  });
+
+  document.getElementById('menu-close').addEventListener('click', function() {
+    menuOverlay.className = '';
+    captureKbd();
+  });
+
+  menuOverlay.addEventListener('click', function(e) {
+    if (e.target === menuOverlay) { menuOverlay.className = ''; captureKbd(); }
+  });
+
+  // Tabs
+  ['settings', 'bookmarks', 'history'].forEach(function(name) {
+    document.getElementById('tab-' + name).addEventListener('click', function() {
+      var tabs = document.querySelectorAll('.menu-tab');
+      for (var i = 0; i < tabs.length; i++) tabs[i].className = 'menu-tab';
+      var panels = document.querySelectorAll('.menu-content');
+      for (var i = 0; i < panels.length; i++) panels[i].className = 'menu-content';
+      document.getElementById('tab-' + name).className = 'menu-tab active';
+      document.getElementById('panel-' + name).className = 'menu-content active';
+      if (name === 'history') send({ type: 'history' });
+    });
+  });
+
+  // Mode toggle
+  document.getElementById('row-mode').addEventListener('click', function() {
+    desktopMode = !desktopMode;
+    send({ type: 'desktopMode', enabled: desktopMode });
+    document.getElementById('m-mode').textContent = desktopMode ? 'Desktop' : 'Mobile';
+  });
+
+  // Quality toggle (menu row mirrors toolbar button)
+  document.getElementById('row-quality').addEventListener('click', function() {
+    presetIndex = (presetIndex + 1) % presets.length;
+    currentPresetName = presets[presetIndex];
+    btnQuality.className = currentPresetName;
+    btnQuality.innerHTML = presetLabels[currentPresetName];
+    document.getElementById('m-quality').textContent = presetLabels[currentPresetName];
+    send({ type: 'quality', preset: currentPresetName });
+  });
+
+  // Zoom
+  document.getElementById('zoom-in').addEventListener('click', function() {
+    send({ type: 'zoom', direction: 'in' });
+  });
+  document.getElementById('zoom-out').addEventListener('click', function() {
+    send({ type: 'zoom', direction: 'out' });
+  });
+  document.getElementById('zoom-level').addEventListener('click', function() {
+    send({ type: 'zoom', direction: 'reset' });
+  });
+
+  // ── Bookmarks ─────────────────────────────────────────────────────────────────
+
+  var BK_KEY = 'bb10_bookmarks';
+
+  function loadBookmarks() {
+    try { return JSON.parse(localStorage.getItem(BK_KEY) || '[]'); } catch(e) { return []; }
+  }
+
+  function saveBookmarks(bks) {
+    try { localStorage.setItem(BK_KEY, JSON.stringify(bks)); } catch(e) {}
+  }
+
+  function renderBookmarks() {
+    var bks = loadBookmarks();
+    var el  = document.getElementById('bk-list');
+    if (!bks.length) { el.innerHTML = '<div class="menu-list-empty">No bookmarks yet</div>'; return; }
+    el.innerHTML = '';
+    bks.forEach(function(bk, i) {
+      var item = document.createElement('div');
+      item.className = 'menu-list-item';
+      item.innerHTML = '<div class="mli-info"><div class="mli-title">' + escHtml(bk.title) + '</div>' +
+        '<div class="mli-domain">' + escHtml(bk.url) + '</div></div>' +
+        '<button class="mli-delete" data-i="' + i + '">&#10005;</button>';
+      item.querySelector('.mli-info').addEventListener('click', function() {
+        navigateTo(bk.url); menuOverlay.className = '';
+      });
+      item.querySelector('.mli-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var bs = loadBookmarks(); bs.splice(i, 1); saveBookmarks(bs); renderBookmarks();
+      });
+      el.appendChild(item);
+    });
+  }
+
+  document.getElementById('bk-add').addEventListener('click', function() {
+    var url = currentUrl || urlInput.value;
+    if (!url) return;
+    var bks = loadBookmarks();
+    if (bks.some(function(b) { return b.url === url; })) { showToast('Already bookmarked', 2000); return; }
+    bks.unshift({ url: url, title: currentTitle || url, ts: Date.now() });
+    saveBookmarks(bks);
+    renderBookmarks();
+    showToast('Bookmarked', 2000);
+  });
+
+  document.getElementById('bk-clear').addEventListener('click', function() {
+    saveBookmarks([]); renderBookmarks();
+  });
+
+  renderBookmarks();
+
+  // ── History ───────────────────────────────────────────────────────────────────
+
+  function renderHistory(entries) {
+    var el = document.getElementById('hist-list');
+    if (!entries || !entries.length) { el.innerHTML = '<div class="menu-list-empty">No history yet</div>'; return; }
+    el.innerHTML = '';
+    entries.forEach(function(h) {
+      var item = document.createElement('div');
+      item.className = 'menu-list-item';
+      var ago = formatAgo(h.timestamp);
+      item.innerHTML = '<div class="mli-info"><div class="mli-title">' + escHtml(h.title || h.url) + '</div>' +
+        '<div class="mli-domain">' + escHtml(h.url) + '</div></div>' +
+        '<span class="mli-meta">' + ago + '</span>';
+      item.addEventListener('click', function() {
+        navigateTo(h.url); menuOverlay.className = '';
+      });
+      el.appendChild(item);
+    });
+  }
+
+  document.getElementById('hist-clear').addEventListener('click', function() { renderHistory([]); });
+
+  function formatAgo(ts) {
+    var s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm';
+    return Math.floor(s / 3600) + 'h';
+  }
+
+  // ── Downloads ─────────────────────────────────────────────────────────────────
+
+  var currentDownloadToken = null;
+  var downloadDismissTimer = null;
+
+  function fmtBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function showDownloadBanner(filename, size, token) {
+    currentDownloadToken = token;
+    document.getElementById('download-banner-name').textContent = filename;
+    document.getElementById('download-banner-size').textContent = fmtBytes(size);
+    document.getElementById('download-banner').className = 'show';
+    if (downloadDismissTimer) clearTimeout(downloadDismissTimer);
+    downloadDismissTimer = setTimeout(dismissDownloadBanner, 30000);
+  }
+
+  function dismissDownloadBanner() {
+    document.getElementById('download-banner').className = '';
+    currentDownloadToken = null;
+    if (downloadDismissTimer) { clearTimeout(downloadDismissTimer); downloadDismissTimer = null; }
+  }
+
+  document.getElementById('download-save-btn').addEventListener('click', function() {
+    if (!currentDownloadToken) return;
+    window.open('/download/' + currentDownloadToken);
+    dismissDownloadBanner();
+  });
+
+  document.getElementById('download-dismiss-btn').addEventListener('click', dismissDownloadBanner);
+
+  // ── Uploads ───────────────────────────────────────────────────────────────────
+
+  function showFileChooser() {
+    document.getElementById('upload-input').value = '';
+    document.getElementById('upload-progress-wrap').style.display = 'none';
+    document.getElementById('upload-progress-bar').style.width = '0%';
+    document.getElementById('upload-cancel-btn').disabled = false;
+    document.getElementById('filechooser-overlay').className = 'show';
+  }
+
+  document.getElementById('upload-cancel-btn').addEventListener('click', function() {
+    document.getElementById('filechooser-overlay').className = '';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload/cancel', true);
+    xhr.send();
+  });
+
+  document.getElementById('upload-input').addEventListener('change', function() {
+    var file = this.files[0];
+    if (!file) return;
+    document.getElementById('upload-progress-wrap').style.display = 'block';
+    document.getElementById('upload-cancel-btn').disabled = true;
+    var xhr = new XMLHttpRequest();
+    xhr.open('PUT', '/api/upload', true);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('X-Filename', encodeURIComponent(file.name));
+    xhr.upload.onprogress = function(e) {
+      if (e.lengthComputable) document.getElementById('upload-progress-bar').style.width = Math.round(e.loaded / e.total * 100) + '%';
+    };
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+      document.getElementById('filechooser-overlay').className = '';
+      if (xhr.status !== 200) showToast('Upload failed. Please try again.', 4000);
+    };
+    xhr.send(file);
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+})();
+</script>
+
+</body>
+</html>

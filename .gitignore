@@ -1,0 +1,20 @@
+node_modules/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Runtime state and browser data
+.bb10.lock
+profile-bb10/
+downloads-bb10/
+uploads-bb10/
+
+# Logs, archives, and editor/OS files
+*.log
+*.zip
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
