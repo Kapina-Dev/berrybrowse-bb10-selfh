@@ -4,6 +4,15 @@ Standalone self-hosted remote browser for BlackBerry 10.
 
 Full BB10 WebSocket experience — screenshot stream, multi-tab, audio streaming, drag, uploads, downloads, bookmarks, zoom — without accounts, payments, or multi-user infrastructure.
 
+## Project identity and acknowledgment
+
+BerryBrowse is an independent proxy browser designed for BlackBerry WebKit
+devices. It is not affiliated with and should not be confused with
+**BerryBrowser by sw7ft**.
+
+Respect and thanks to **sw7ft** for BerryBrowser, BerryCore, and his wider
+efforts to keep BlackBerry devices alive and useful.
+
 ## Requirements
 
 - Linux (Debian/Ubuntu recommended)
